@@ -1,0 +1,68 @@
+{
+  "info": {
+    "name": "Notification Service",
+    "description": "Requests for the Resilient Notification Service (Kafka + Circuit Breaker).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:8080" }],
+  "item": [
+    {
+      "name": "Send notification (EMAIL)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"userId\": \"user123\",\n  \"message\": \"Your order has shipped!\",\n  \"notificationType\": \"EMAIL\"\n}" },
+        "url": "{{baseUrl}}/api/notifications/send"
+      }
+    },
+    {
+      "name": "Send notification (invalid - expect 400)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"userId\": \"\",\n  \"message\": \"\",\n  \"notificationType\": \"FAX\"\n}" },
+        "url": "{{baseUrl}}/api/notifications/send"
+      }
+    },
+    {
+      "name": "List processed notification records",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/notifications/records" }
+    },
+    {
+      "name": "Mock user profile - success",
+      "request": { "method": "GET", "url": "{{baseUrl}}/mock-users/user123" }
+    },
+    {
+      "name": "Mock user profile - force 500",
+      "request": { "method": "GET", "url": "{{baseUrl}}/mock-users/user123?fail=true" }
+    },
+    {
+      "name": "Mock user profile - 3s delay",
+      "request": { "method": "GET", "url": "{{baseUrl}}/mock-users/user123?delay=3000" }
+    },
+    {
+      "name": "Mock: make User Profile Service FAIL (global)",
+      "request": { "method": "POST", "url": "{{baseUrl}}/mock-users/admin/config?fail=true" }
+    },
+    {
+      "name": "Mock: make User Profile Service SLOW (global)",
+      "request": { "method": "POST", "url": "{{baseUrl}}/mock-users/admin/config?delay=3000" }
+    },
+    {
+      "name": "Mock: restore healthy behaviour (global)",
+      "request": { "method": "POST", "url": "{{baseUrl}}/mock-users/admin/config?fail=false&delay=0" }
+    },
+    {
+      "name": "Health",
+      "request": { "method": "GET", "url": "{{baseUrl}}/actuator/health" }
+    },
+    {
+      "name": "Circuit breaker state",
+      "request": { "method": "GET", "url": "{{baseUrl}}/actuator/circuitbreakers" }
+    },
+    {
+      "name": "Circuit breaker events",
+      "request": { "method": "GET", "url": "{{baseUrl}}/actuator/circuitbreakerevents" }
+    }
+  ]
+}

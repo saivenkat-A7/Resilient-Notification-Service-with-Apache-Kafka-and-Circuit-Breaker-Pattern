@@ -1,0 +1,96 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: notification-service
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 10
+      properties:
+        enable.idempotence: true
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+        retry.backoff.ms: 500
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:notification_group}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.example.notificationservice.event.NotificationEvent
+        spring.json.trusted.packages: com.example.notificationservice.event
+        spring.json.use.type.headers: false
+        reconnect.backoff.ms: 1000
+        reconnect.backoff.max.ms: 10000
+    listener:
+      # Offset is committed after each successfully processed record (no loss, no premature commit)
+      ack-mode: record
+      missing-topics-fatal: false
+
+app:
+  kafka:
+    topic:
+      partitions: ${KAFKA_TOPIC_PARTITIONS:1}
+      replicas: ${KAFKA_TOPIC_REPLICAS:1}
+    producer:
+      send-timeout-ms: ${KAFKA_PRODUCER_SEND_TIMEOUT_MS:15000}
+    consumer:
+      retry:
+        max-attempts: ${KAFKA_CONSUMER_RETRY_MAX_ATTEMPTS:3}
+        initial-interval-ms: ${KAFKA_CONSUMER_RETRY_INITIAL_INTERVAL_MS:500}
+        max-interval-ms: ${KAFKA_CONSUMER_RETRY_MAX_INTERVAL_MS:5000}
+
+user:
+  profile:
+    service:
+      url: ${USER_PROFILE_SERVICE_URL:http://localhost:8080/mock-users}
+      connect-timeout-ms: ${USER_PROFILE_CONNECT_TIMEOUT_MS:1000}
+      read-timeout-ms: ${USER_PROFILE_READ_TIMEOUT_MS:2000}
+
+# Initial behaviour of the built-in mock User Profile Service (can be changed at runtime)
+mock:
+  user-profile:
+    fail: ${MOCK_USER_PROFILE_FAIL:false}
+    delay-ms: ${MOCK_USER_PROFILE_DELAY_MS:0}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userProfileService:
+        register-health-indicator: true
+        allow-health-indicator-to-fail: false
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: ${CB_SLIDING_WINDOW_SIZE:10}
+        minimum-number-of-calls: ${CB_MINIMUM_NUMBER_OF_CALLS:5}
+        failure-rate-threshold: ${CB_FAILURE_RATE_THRESHOLD:50}
+        slow-call-duration-threshold: ${CB_SLOW_CALL_DURATION_THRESHOLD:1500ms}
+        slow-call-rate-threshold: 100
+        wait-duration-in-open-state: ${CB_WAIT_DURATION_IN_OPEN_STATE:10s}
+        permitted-number-of-calls-in-half-open-state: ${CB_PERMITTED_CALLS_IN_HALF_OPEN:3}
+        automatic-transition-from-open-to-half-open-enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,circuitbreakerevents
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  level:
+    com.example.notificationservice: INFO
+    org.apache.kafka: WARN
